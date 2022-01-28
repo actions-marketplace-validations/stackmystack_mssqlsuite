@@ -13,10 +13,11 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run the action
-        uses: potatoqualitee/mssqlsuite@v1
+        uses: stackmystack/mssqlsuite@v1
         with:
           install: sqlengine, sqlclient, sqlpackage, localdb
           sa-password: c0MplicatedP@ssword
+          version: 2017
           show-log: true
 
       - name: Run sqlcmd

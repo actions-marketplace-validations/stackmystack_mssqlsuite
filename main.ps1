@@ -2,6 +2,7 @@ param (
    [ValidateSet("sqlclient","sqlpackage", "sqlengine", "localdb")]
    [string[]]$Install,
    [string]$SaPassword,
+   [string]$Version,
    [switch]$ShowLog
 )
 
@@ -14,7 +15,7 @@ if ("sqlengine" -in $Install) {
       brew install docker docker-machine
       docker-machine create --driver virtualbox --virtualbox-memory 3072 default
       docker-machine env default
-      
+
       $profiledir = Split-Path $profile
       if (-not (Test-Path $profiledir)) {
          mkdir $profiledir
@@ -28,7 +29,7 @@ if ("sqlengine" -in $Install) {
       docker-machine stop default
       VBoxManage modifyvm "default" --natpf1 "mssql,tcp,,1433,,1433"
       docker-machine start default
-      docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$SaPassword" --name sql -p 1433:1433 --memory="2g" -d mcr.microsoft.com/mssql/server:2019-latest
+      docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$SaPassword" --name sql -p 1433:1433 --memory="2g" -d mcr.microsoft.com/mssql/server:$Version-latest
       Write-Output "Docker finished running"
       Start-Sleep 5
       if ($ShowLog) {
@@ -38,16 +39,16 @@ if ("sqlengine" -in $Install) {
          docker-machine ls
          docker logs -t sql
       }
-      
+
       Write-Output "sql engine installed at localhost"
    }
 
    if ($islinux) {
-      Write-Output "linux detected, downloading the 2019 docker container"
-      docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$SaPassword" --name sql -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
+      Write-Output "linux detected, downloading the $Version docker container"
+      docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$SaPassword" --name sql -p 1433:1433 -d mcr.microsoft.com/mssql/server:$Version-latest
       Write-Output "Waiting for docker to start"
       Start-Sleep -Seconds 10
-      
+
       if ($ShowLog) {
          docker ps -a
          docker logs -t sql
@@ -67,12 +68,12 @@ if ("sqlengine" -in $Install) {
       Invoke-WebRequest -Uri https://download.microsoft.com/download/7/c/1/7c14e92e-bdcb-4f89-b7cf-93543e7112d1/SQLServer2019-DEV-x64-ENU.box -OutFile sqlsetup.box
       Start-Process -Wait -FilePath ./sqlsetup.exe -ArgumentList /qs, /x:setup
       .\setup\setup.exe /q /ACTION=Install /INSTANCENAME=MSSQLSERVER /FEATURES=SQLEngine /UPDATEENABLED=0 /SQLSVCACCOUNT='NT AUTHORITY\NETWORK SERVICE' /SQLSYSADMINACCOUNTS='BUILTIN\ADMINISTRATORS' /TCPENABLED=1 /NPENABLED=0 /IACCEPTSQLSERVERLICENSETERMS
-      Set-ItemProperty -path 'HKLM:\Software\Microsoft\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQLSERVER\' -Name LoginMode -Value 2 
+      Set-ItemProperty -path 'HKLM:\Software\Microsoft\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQLSERVER\' -Name LoginMode -Value 2
       Restart-Service MSSQLSERVER
       sqlcmd -S localhost -q "ALTER LOGIN [sa] WITH PASSWORD=N'$SaPassword'"
       sqlcmd -S localhost -q "ALTER LOGIN [sa] ENABLE"
       Pop-Location
-      
+
       Write-Output "sql server 2019 installed at localhost and accessible with both windows and sql auth"
    }
 }
@@ -83,12 +84,12 @@ if ("sqlclient" -in $Install) {
       brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
       $null = brew update
       $log = brew install msodbcsql17 mssql-tools
-      
+
       if ($ShowLog) {
          $log
       }
    }
-   
+
    Write-Output "sqlclient tools are installed"
 }
 
@@ -124,7 +125,7 @@ if ("sqlpackage" -in $Install) {
          sqlpackage /version
       }
    }
-   
+
    Write-Output "sqlpackage installed"
 }
 
@@ -138,9 +139,10 @@ if ("localdb" -in $Install) {
       Write-Host "Checking"
       sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "SELECT @@VERSION;"
       sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "ALTER LOGIN [sa] WITH PASSWORD=N'$SaPassword'"
-      
+
       Write-Host "SqlLocalDB installed and accessible at (localdb)\MSSQLLocalDB"
    } else {
       Write-Output "localdb cannot be isntalled on mac or linux"
    }
 }
+

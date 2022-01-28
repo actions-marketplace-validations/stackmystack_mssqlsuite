@@ -1,4 +1,4 @@
-name: "mssql suite"
+name: "mssql suite with custom versions"
 branding:
   icon: "database"
   color: "yellow"
@@ -15,6 +15,10 @@ inputs:
     description: "Show the log file for the docker container"
     required: false
     default: "false"
+  version:
+    description: "Select SQL Server version. Only available for linux and macos for now."
+    required: false
+    default: 2019
 runs:
   using: "composite"
   steps:
@@ -31,6 +35,7 @@ runs:
         $params = @{
             Install         = ("${{ inputs.install }}" -split ",").Trim()
             SaPassword      = "${{ inputs.sa-password }}"
+            Version         = ${{ inputs.version }}
             ShowLog         = $${{ inputs.show-log }}
         }
 
